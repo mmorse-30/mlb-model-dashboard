@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MLB Model Bets</title>
+<meta name="robots" content="noindex">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f3f2ee;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #757470;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --series-1: #2a78d6; --up: #006300; --down: #c03030;
+  --up-bg: rgba(12,163,12,0.10); --down-bg: rgba(208,59,59,0.10);
+  --accent-bg: #e8f1fc; --warn-bg: #fff6e0; --warn-ink: #6b4d00;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321;
+    --ink: #f0efec; --ink-2: #c3c2b7; --muted: #9a9890;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --series-1: #3987e5; --up: #2bbd2b; --down: #e66767;
+    --up-bg: rgba(12,163,12,0.16); --down-bg: rgba(230,103,103,0.16);
+    --accent-bg: #16263a; --warn-bg: #2a2310; --warn-ink: #f0d38a;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321;
+  --ink: #f0efec; --ink-2: #c3c2b7; --muted: #9a9890;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+  --series-1: #3987e5; --up: #2bbd2b; --down: #e66767;
+  --up-bg: rgba(12,163,12,0.16); --down-bg: rgba(230,103,103,0.16);
+  --accent-bg: #16263a; --warn-bg: #2a2310; --warn-ink: #f0d38a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--ink); }
+body { font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 20px 16px 48px; }
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; margin-bottom: 14px; }
+h1 { font-size: 24px; margin: 0; letter-spacing: -0.01em; }
+.sub { color: var(--ink-2); margin: 2px 0 0; font-size: 14px; }
+h2 { font-size: 17px; margin: 0 0 4px; }
+.hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+.banner { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin-bottom: 16px; }
+.datebar { display: flex; align-items: center; gap: 6px; }
+.datebar select, .datebar button, .unit input, select.plain {
+  font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 10px; min-height: 38px;
+}
+.datebar button { cursor: pointer; width: 38px; padding: 0; font-size: 18px; }
+.datebar button:disabled { opacity: .35; cursor: default; }
+.datebar select { min-width: 200px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+.tile .lbl { color: var(--ink-2); font-size: 13px; }
+.tile .big { font-size: 28px; font-weight: 650; margin: 2px 0; letter-spacing: -0.01em; }
+.tile .meta { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--ink-2); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.chip { font: inherit; font-size: 13px; border: 1px solid var(--border); background: var(--surface); color: var(--ink-2);
+        border-radius: 999px; padding: 5px 12px; cursor: pointer; min-height: 32px; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; border: 0; background: var(--surface); color: var(--ink-2); padding: 6px 14px; cursor: pointer; min-height: 34px; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.row-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.games { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.game { border: 1px solid var(--border); border-radius: 12px; padding: 12px 12px 6px; background: var(--surface); }
+.game .mu { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.game .teams { font-weight: 650; }
+.game .score { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 13px; text-align: right; }
+.game .proj { color: var(--muted); font-size: 12px; margin: 1px 0 8px; }
+.bet { display: grid; grid-template-columns: 1fr auto auto; gap: 2px 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--grid); }
+.bet .pk { font-weight: 560; }
+.bet .mk { color: var(--muted); font-size: 12px; }
+.bet .px { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 13px; text-align: right; }
+.bet .why { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+.res { font-size: 12px; font-weight: 650; border-radius: 6px; padding: 2px 7px; text-align: center; min-width: 64px; font-variant-numeric: tabular-nums; }
+.res.win { background: var(--up-bg); color: var(--up); }
+.res.lose { background: var(--down-bg); color: var(--down); }
+.res.push, .res.pending { background: var(--surface-2); color: var(--ink-2); }
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+tr.total td { font-weight: 650; background: var(--surface-2); }
+tr.sect td { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; padding-top: 16px; border-bottom: 1px solid var(--grid); }
+tr.subtle td { color: var(--ink-2); }
+.more { font: inherit; font-size: 13px; margin-top: 10px; background: none; border: 1px solid var(--border); color: var(--ink-2); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.empty { color: var(--muted); padding: 10px 0; }
+.chart-wrap { position: relative; }
+svg.chart { display: block; width: 100%; height: 260px; overflow: visible; }
+svg.chart text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+       padding: 7px 10px; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.12); display: none; white-space: nowrap; z-index: 2; }
+.tip b { font-size: 15px; }
+.unit { display: flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 13px; }
+.unit input { width: 90px; min-height: 32px; padding: 4px 8px; }
+details.how { color: var(--ink-2); font-size: 14px; }
+details.how summary { cursor: pointer; font-weight: 600; color: var(--ink); }
+details.how li { margin: 4px 0; }
+.foot { color: var(--muted); font-size: 12px; margin-top: 20px; }
+@media (max-width: 720px) {
+  .tiles { grid-template-columns: 1fr; }
+  .tile .big { font-size: 24px; }
+  .datebar select { min-width: 0; flex: 1; }
+  .datebar { width: 100%; }
+  .games { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>MLB Model Bets</h1>
+      <p class="sub" id="sub">Daily picks from the model, graded after the games.</p>
+    </div>
+    <div class="datebar">
+      <button id="prev" aria-label="Previous day">&#8249;</button>
+      <select id="date" aria-label="Choose a date"></select>
+      <button id="next" aria-label="Next day">&#8250;</button>
+    </div>
+  </header>
+  <div class="banner" id="banner" hidden></div>
+
+  <section class="tiles" id="tiles" aria-label="Profit summary"></section>
+
+  <section class="card">
+    <div class="row-head">
+      <div>
+        <h2 id="card-title">Today's card</h2>
+        <p class="hint" id="card-hint"></p>
+      </div>
+      <label class="unit">1 unit = $<input id="unit" type="number" min="0" step="5" placeholder="units" inputmode="decimal"></label>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Filter bets"></div>
+    <div id="games" class="games"></div>
+    <div id="hr"></div>
+  </section>
+
+  <section class="card">
+    <div class="row-head">
+      <div>
+        <h2>Profit by category</h2>
+        <p class="hint" id="cat-hint"></p>
+      </div>
+      <div class="seg" id="period" role="group" aria-label="Period">
+        <button data-p="day">Day</button><button data-p="month">Month</button><button data-p="season" aria-pressed="true">Season</button>
+      </div>
+    </div>
+    <div class="scroll"><table id="cat"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="row-head">
+      <div>
+        <h2>Season so far</h2>
+        <p class="hint">Running profit in units, through the selected day.</p>
+      </div>
+      <select class="plain" id="series" aria-label="Category shown in chart"></select>
+    </div>
+    <div class="chart-wrap" id="chart-wrap">
+      <svg class="chart" id="chart" role="img" aria-label="Cumulative profit chart"></svg>
+      <div class="tip" id="tip"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>By month</h2>
+    <p class="hint">Units won or lost per category each month, through the selected day.</p>
+    <div class="scroll"><table id="months"></table></div>
+  </section>
+
+  <section class="card">
+    <details class="how">
+      <summary>How this works</summary>
+      <ul>
+        <li><b>Every bet is 1 unit.</b> Profit is shown in units; type a dollar amount next to "1 unit =" to see dollars.</li>
+        <li><b>Game lines:</b> for each game the model simulates the score thousands of times. For the total, moneyline and run line it takes the side with the best expected return at the best price across books, and bets it only if that return is positive. Each team total is checked the same way.</li>
+        <li><b>HR props:</b> the model's chance a hitter homers vs the sportsbook price. It backs (or fades) a player only when the bet is +EV, one bet per player, at the opening price (closing price if no open).</li>
+        <li><b>Model %</b> = the model's chance the bet wins. <b>Edge</b> = expected profit per unit at that price.</li>
+        <li><b>Tracked, not on the card:</b> the model also grades every player prop and alternate line it finds +EV. Those are shown for transparency but aren't the daily recommendations.</li>
+        <li id="how-replay"></li>
+      </ul>
+    </details>
+  </section>
+  <p class="foot" id="foot"></p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  const CAT = [
+    { key: "totals", label: "Game totals" },
+    { key: "ml", label: "Moneyline" },
+    { key: "runline", label: "Run line" },
+    { key: "team_tot", label: "Team totals" },
+    { key: "hr", label: "HR props" },
+  ];
+  const OTHER = [
+    { key: "props", label: "Other player props" },
+    { key: "alt_totals", label: "Alt game totals" },
+    { key: "alt_team_tot", label: "Alt team totals" },
+    { key: "alt_runline", label: "Alt run lines" },
+  ];
+  const BOOKS = { williamhill_us: "Caesars", draftkings: "DraftKings", fanduel: "FanDuel", betmgm: "BetMGM", betrivers: "BetRivers",
+    fanatics: "Fanatics", bovada: "Bovada", betonlineag: "BetOnline", mybookieag: "MyBookie", espnbet: "ESPN BET", hardrockbet: "Hard Rock",
+    ballybet: "Bally Bet", betparx: "betPARX", lowvig: "LowVig", pointsbetus: "PointsBet", superbook: "SuperBook", wynnbet: "WynnBET", unibet_us: "Unibet" };
+  const MKT_LABEL = { totals: "Total", ml: "Moneyline", runline: "Run line", team_tot: "Team total" };
+  let DATA, DATES, cur, period = "season", filter = "all", series = "card", hrAll = false;
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+  let unitDollars = 0;
+  try { unitDollars = parseFloat(localStorage.getItem("unit$")) || 0; } catch (e) {}
+
+  const fmtOdds = (p) => (p > 0 ? "+" : "") + Math.round(p);
+  const pct = (x, d = 0) => (x * 100).toFixed(d) + "%";
+  const fmtDate = (d, opt) => new Date(d + "T12:00:00").toLocaleDateString("en-US", opt || { weekday: "short", month: "short", day: "numeric" });
+  function money(u, withSign = true) {
+    const s = withSign ? (u > 0.0049 ? "+" : u < -0.0049 ? "−" : "") : "";
+    if (unitDollars > 0) return s + "$" + Math.abs(u * unitDollars).toLocaleString("en-US", { maximumFractionDigits: 0 });
+    return s + Math.abs(u).toFixed(2) + "u";
+  }
+  const tone = (u) => (u > 0.0049 ? "up" : u < -0.0049 ? "down" : "flat");
+  const implied = (p) => (p > 0 ? 100 / (p + 100) : -p / (-p + 100));
+
+  // ---------- aggregation
+  const zero = () => ({ n: 0, w: 0, l: 0, p: 0, pnl: 0 });
+  function add(a, b) { a.n += b.n; a.w += b.w; a.l += b.l; a.p += b.p; a.pnl += b.pnl; return a; }
+  function dayAgg(d) {
+    const day = DATA.days[d], out = {};
+    for (const c of CAT) out[c.key] = zero();
+    for (const b of day.b) {
+      const a = out[b.market]; a.n++; a.pnl += b.pnl;
+      if (b.result === "win") a.w++; else if (b.result === "lose") a.l++; else if (b.result === "push") a.p++;
+    }
+    for (const b of day.h) {
+      const a = out.hr; a.n++; a.pnl += b.pnl;
+      if (b.result === "win") a.w++; else if (b.result === "lose") a.l++;
+    }
+    const o = day.o;
+    out.props = { n: o.props.n, w: o.props.w, l: o.props.n - o.props.w, p: 0, pnl: o.props.pnl };
+    for (const k of ["alt_totals", "alt_team_tot", "alt_runline"]) {
+      const v = o[k] || {};
+      out[k] = { n: v.staked || 0, w: v.w || 0, l: v.l || 0, p: v.p || 0, pnl: v.pnl || 0 };
+    }
+    out.card = CAT.reduce((acc, c) => add(acc, out[c.key]), zero());
+    return out;
+  }
+  const AGG = {};
+  function aggRange(from, to) {
+    const out = {};
+    for (const k of [...CAT, ...OTHER].map((c) => c.key).concat("card")) out[k] = zero();
+    for (const d of DATES) {
+      if (d < from || d > to) continue;
+      const a = AGG[d];
+      for (const k in out) add(out[k], a[k]);
+    }
+    return out;
+  }
+
+  // ---------- render: tiles
+  function tile(label, a, extra) {
+    const t = el("div", "tile");
+    t.appendChild(el("div", "lbl", label));
+    t.appendChild(el("div", "big " + tone(a.pnl), money(a.pnl)));
+    const roi = a.n ? (a.pnl / a.n) : 0;
+    t.appendChild(el("div", "meta", `${a.w}-${a.l}${a.p ? "-" + a.p : ""} · ${a.n} bets · ROI ${a.n ? (roi >= 0 ? "+" : "−") + Math.abs(roi * 100).toFixed(1) + "%" : "—"}`));
+    if (extra) t.appendChild(el("div", "meta", extra));
+    return t;
+  }
+  function renderTiles() {
+    const T = $("tiles"); T.replaceChildren();
+    const m0 = cur.slice(0, 8) + "01", s0 = DATES[0];
+    T.appendChild(tile(fmtDate(cur, { weekday: "long", month: "short", day: "numeric" }), AGG[cur].card));
+    T.appendChild(tile(fmtDate(cur, { month: "long" }) + " to date", aggRange(m0, cur).card));
+    T.appendChild(tile("Season to date", aggRange(s0, cur).card));
+  }
+
+  // ---------- render: the day's card
+  function resBadge(r, pnl) {
+    const txt = r === "win" ? "W " + money(pnl) : r === "lose" ? "L " + money(pnl) : r === "push" ? "Push" : "Pending";
+    return el("span", "res " + r, txt);
+  }
+  function renderCard() {
+    const day = DATA.days[cur];
+    $("card-title").textContent = (DATA.mode === "live" && cur === DATES[DATES.length - 1] ? "Today's card" : "Card") + " — " + fmtDate(cur, { weekday: "long", month: "long", day: "numeric" });
+    const nG = day.b.length, nH = day.h.length;
+    $("card-hint").textContent = `${nG} game-line bet${nG === 1 ? "" : "s"} across ${day.g.length} games, plus ${nH} HR prop${nH === 1 ? "" : "s"}.`;
+
+    const chips = $("chips"); chips.replaceChildren();
+    const opts = [["all", "All"], ["totals", "Totals"], ["ml", "Moneyline"], ["runline", "Run line"], ["team_tot", "Team totals"], ["hr", "HR props"]];
+    for (const [k, lab] of opts) {
+      const cnt = k === "all" ? nG + nH : k === "hr" ? nH : day.b.filter((b) => b.market === k).length;
+      const c = el("button", "chip", `${lab} (${cnt})`);
+      c.setAttribute("aria-pressed", String(filter === k));
+      c.onclick = () => { filter = k; renderCard(); };
+      chips.appendChild(c);
+    }
+
+    const G = $("games"); G.replaceChildren();
+    if (filter !== "hr") {
+      const byGame = day.g.map((g) => ({ g, bets: [] }));
+      for (const b of day.b) {
+        if (filter !== "all" && b.market !== filter) continue;
+        if (byGame[b.gi]) byGame[b.gi].bets.push(b);
+      }
+      let shown = 0;
+      for (const { g, bets } of byGame) {
+        if (!bets.length) continue;
+        shown++;
+        const box = el("div", "game");
+        const mu = el("div", "mu");
+        mu.appendChild(el("span", "teams", `${g.away} @ ${g.home}`));
+        mu.appendChild(el("span", "score", g.final_away == null ? "Not started" : `Final ${g.away} ${g.final_away} – ${g.home} ${g.final_home}`));
+        box.appendChild(mu);
+        box.appendChild(el("div", "proj", `Model: ${g.away} ${g.proj_away.toFixed(1)} – ${g.home} ${g.proj_home.toFixed(1)} (total ${(g.proj_away + g.proj_home).toFixed(1)})`));
+        for (const b of bets) {
+          const r = el("div", "bet");
+          const left = el("div");
+          left.appendChild(el("div", "pk", b.pick));
+          left.appendChild(el("div", "mk", MKT_LABEL[b.market]));
+          r.appendChild(left);
+          r.appendChild(el("span", "px", fmtOdds(b.price)));
+          r.appendChild(resBadge(b.result, b.pnl));
+          r.appendChild(el("div", "why", `Model ${pct(b.model_p)} vs book ${pct(implied(b.price))} · edge +${(b.ev * 100).toFixed(1)}%`));
+          box.appendChild(r);
+        }
+        G.appendChild(box);
+      }
+      if (!shown) G.appendChild(el("div", "empty", "No game-line bets in this category today."));
+    }
+
+    const H = $("hr"); H.replaceChildren();
+    if (filter === "all" || filter === "hr") {
+      const head = el("h2", null, "HR props"); head.style.marginTop = filter === "hr" ? "0" : "20px";
+      H.appendChild(head);
+      if (!day.h.length) { H.appendChild(el("div", "empty", "No HR props today.")); return; }
+      H.appendChild(el("p", "hint", "Sorted by edge. Each is 1 unit on the player to homer (Over 0.5) or not (Under 0.5)."));
+      const wrap = el("div", "scroll"), t = el("table");
+      const hr = el("tr");
+      for (const [h, n] of [["Player", 0], ["Bet", 0], ["Price", 1], ["Book", 0], ["Model %", 1], ["Edge", 1], ["HR", 1], ["Result", 1]]) hr.appendChild(el("th", n ? "n" : "", h));
+      const thead = el("thead"); thead.appendChild(hr); t.appendChild(thead);
+      const tb = el("tbody");
+      const rows = hrAll ? day.h : day.h.slice(0, 12);
+      for (const b of rows) {
+        const tr = el("tr");
+        const nm = el("td"); nm.textContent = b.name || "?"; const tm = el("span", "mk", "  " + (b.team || "")); nm.appendChild(tm); tr.appendChild(nm);
+        tr.appendChild(el("td", null, (b.side === "over" ? "To homer" : "No HR") + (b.market === "alt" ? " (alt)" : "")));
+        tr.appendChild(el("td", "n", fmtOdds(b.price)));
+        tr.appendChild(el("td", null, BOOKS[b.book] || (b.book || "").replace(/^\w/, (c) => c.toUpperCase())));
+        tr.appendChild(el("td", "n", pct(b.model_p)));
+        tr.appendChild(el("td", "n", "+" + (b.ev * 100).toFixed(0) + "%"));
+        tr.appendChild(el("td", "n", b.actual == null ? "—" : String(b.actual)));
+        const rc = el("td", "n"); rc.appendChild(resBadge(b.result, b.pnl)); tr.appendChild(rc);
+        tb.appendChild(tr);
+      }
+      t.appendChild(tb); wrap.appendChild(t); H.appendChild(wrap);
+      if (day.h.length > 12) {
+        const m = el("button", "more", hrAll ? "Show top 12" : `Show all ${day.h.length}`);
+        m.onclick = () => { hrAll = !hrAll; renderCard(); };
+        H.appendChild(m);
+      }
+    }
+  }
+
+  // ---------- render: category table
+  function catRow(label, a, cls) {
+    const tr = el("tr", cls || "");
+    tr.appendChild(el("td", null, label));
+    tr.appendChild(el("td", "n", a.n.toLocaleString()));
+    tr.appendChild(el("td", "n", a.n ? `${a.w}-${a.l}${a.p ? "-" + a.p : ""}` : "—"));
+    tr.appendChild(el("td", "n", a.w + a.l ? pct(a.w / (a.w + a.l), 1) : "—"));
+    tr.appendChild(el("td", "n " + tone(a.pnl), a.n ? money(a.pnl) : "—"));
+    const roi = a.n ? a.pnl / a.n : 0;
+    tr.appendChild(el("td", "n " + tone(roi), a.n ? (roi >= 0 ? "+" : "−") + Math.abs(roi * 100).toFixed(1) + "%" : "—"));
+    return tr;
+  }
+  function renderCats() {
+    const from = period === "day" ? cur : period === "month" ? cur.slice(0, 8) + "01" : DATES[0];
+    const a = aggRange(from, cur);
+    $("cat-hint").textContent = period === "day" ? fmtDate(cur, { weekday: "long", month: "long", day: "numeric" })
+      : period === "month" ? fmtDate(cur, { month: "long" }) + " 1 – " + fmtDate(cur, { month: "short", day: "numeric" })
+      : "Season through " + fmtDate(cur, { month: "short", day: "numeric" });
+    for (const b of $("period").querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.p === period));
+    const t = $("cat"); t.replaceChildren();
+    const thead = el("thead"), hr = el("tr");
+    for (const [h, n] of [["Category", 0], ["Bets", 1], ["W-L-P", 1], ["Win %", 1], ["Profit", 1], ["ROI", 1]]) hr.appendChild(el("th", n ? "n" : "", h));
+    thead.appendChild(hr); t.appendChild(thead);
+    const tb = el("tbody");
+    for (const c of CAT) tb.appendChild(catRow(c.label, a[c.key]));
+    tb.appendChild(catRow("Daily card total", a.card, "total"));
+    const s = el("tr", "sect"); const sc = el("td", null, "Tracked, not on the card"); sc.colSpan = 6; s.appendChild(sc); tb.appendChild(s);
+    for (const c of OTHER) tb.appendChild(catRow(c.label, a[c.key], "subtle"));
+    t.appendChild(tb);
+  }
+
+  // ---------- render: cumulative chart (one series, crosshair + tooltip)
+  function renderChart() {
+    const svg = $("chart"), tip = $("tip"), wrap = $("chart-wrap");
+    const W = wrap.clientWidth || 600, H = 260, m = { l: 48, r: 12, t: 12, b: 26 };
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.replaceChildren();
+    const ds = DATES.filter((d) => d <= cur);
+    let run = 0; const pts = ds.map((d) => { run += AGG[d][series].pnl; return { d, v: run, day: AGG[d][series].pnl }; });
+    const ns = "http://www.w3.org/2000/svg";
+    const mk = (t, attrs) => { const e = document.createElementNS(ns, t); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+    let lo = Math.min(0, ...pts.map((p) => p.v)), hi = Math.max(0, ...pts.map((p) => p.v));
+    if (hi - lo < 1) { hi += 0.5; lo -= 0.5; }
+    const step = niceStep((hi - lo) / 4);
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    const x = (i) => m.l + (pts.length < 2 ? (W - m.l - m.r) / 2 : (i / (pts.length - 1)) * (W - m.l - m.r));
+    const y = (v) => m.t + (1 - (v - lo) / (hi - lo)) * (H - m.t - m.b);
+    for (let v = lo; v <= hi + 1e-9; v += step) {
+      svg.appendChild(mk("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: Math.abs(v) < 1e-9 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }));
+      const lab = mk("text", { x: m.l - 6, y: y(v) + 4, "text-anchor": "end" });
+      lab.textContent = unitDollars > 0 ? "$" + Math.round(v * unitDollars).toLocaleString() : (Math.round(v * 10) / 10) + "u";
+      svg.appendChild(lab);
+    }
+    const months = new Set();
+    pts.forEach((p, i) => {
+      const mo = p.d.slice(0, 7);
+      if (!months.has(mo)) {
+        months.add(mo);
+        const t = mk("text", { x: x(i), y: H - 6, "text-anchor": i === 0 ? "start" : "middle" });
+        t.textContent = fmtDate(p.d, { month: "short" });
+        svg.appendChild(t);
+      }
+    });
+    if (pts.length) {
+      const d = pts.map((p, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.v).toFixed(1)).join(" ");
+      svg.appendChild(mk("path", { d, fill: "none", stroke: "var(--series-1)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+      const last = pts[pts.length - 1];
+      svg.appendChild(mk("circle", { cx: x(pts.length - 1), cy: y(last.v), r: 4, fill: "var(--series-1)", stroke: "var(--surface)", "stroke-width": 2 }));
+    }
+    const cross = mk("line", { y1: m.t, y2: H - m.b, stroke: "var(--axis)", "stroke-width": 1, visibility: "hidden" });
+    const dot = mk("circle", { r: 4, fill: "var(--series-1)", stroke: "var(--surface)", "stroke-width": 2, visibility: "hidden" });
+    svg.appendChild(cross); svg.appendChild(dot);
+    const hit = mk("rect", { x: m.l, y: 0, width: Math.max(0, W - m.l - m.r), height: H, fill: "transparent" });
+    svg.appendChild(hit);
+    const move = (ev) => {
+      if (!pts.length) return;
+      const r = svg.getBoundingClientRect();
+      const px = (ev.clientX - r.left) * (W / r.width);
+      const i = Math.max(0, Math.min(pts.length - 1, Math.round(((px - m.l) / (W - m.l - m.r)) * (pts.length - 1))));
+      const p = pts[i];
+      cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("visibility", "visible");
+      dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(p.v)); dot.setAttribute("visibility", "visible");
+      tip.replaceChildren();
+      const b = el("b", tone(p.v), money(p.v)); tip.appendChild(b);
+      tip.appendChild(el("div", "meta", "season total · " + fmtDate(p.d)));
+      tip.appendChild(el("div", "meta " + tone(p.day), "that day " + money(p.day)));
+      tip.style.display = "block";
+      const tx = (x(i) / W) * r.width, tw = tip.offsetWidth;
+      tip.style.left = Math.max(0, Math.min(r.width - tw, tx - tw / 2)) + "px";
+      tip.style.top = "-8px";
+    };
+    hit.addEventListener("pointermove", move);
+    hit.addEventListener("pointerdown", move);
+    hit.addEventListener("pointerleave", () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); });
+  }
+  function niceStep(raw) {
+    const p = Math.pow(10, Math.floor(Math.log10(Math.max(raw, 1e-9))));
+    const f = raw / p;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
+  }
+
+  // ---------- render: month table
+  function renderMonths() {
+    const t = $("months"); t.replaceChildren();
+    const cols = [...CAT, { key: "card", label: "Card total" }];
+    const thead = el("thead"), hr = el("tr");
+    hr.appendChild(el("th", null, "Month"));
+    for (const c of cols) hr.appendChild(el("th", "n", c.label));
+    thead.appendChild(hr); t.appendChild(thead);
+    const tb = el("tbody");
+    const months = [...new Set(DATES.filter((d) => d <= cur).map((d) => d.slice(0, 7)))];
+    for (const mo of months) {
+      const a = aggRange(mo + "-01", mo + "-31" < cur ? mo + "-31" : cur);
+      const tr = el("tr");
+      tr.appendChild(el("td", null, fmtDate(mo + "-15", { month: "long" }) + (cur.startsWith(mo) ? " (to date)" : "")));
+      for (const c of cols) {
+        const v = a[c.key];
+        const td = el("td", "n " + (c.key === "card" ? "" : "") + tone(v.pnl), v.n ? money(v.pnl) : "—");
+        td.title = `${v.n} bets, ${v.w}-${v.l}${v.p ? "-" + v.p : ""}`;
+        tr.appendChild(td);
+      }
+      tb.appendChild(tr);
+    }
+    const tot = aggRange(DATES[0], cur), tr = el("tr", "total");
+    tr.appendChild(el("td", null, "Season"));
+    for (const c of cols) tr.appendChild(el("td", "n " + tone(tot[c.key].pnl), money(tot[c.key].pnl)));
+    tb.appendChild(tr);
+    t.appendChild(tb);
+  }
+
+  function renderAll() {
+    $("date").value = cur;
+    $("prev").disabled = cur === DATES[0];
+    $("next").disabled = cur === DATES[DATES.length - 1];
+    renderTiles(); renderCard(); renderCats(); renderChart(); renderMonths();
+  }
+  function go(d) {
+    if (!DATA.days[d]) return;
+    cur = d; hrAll = false;
+    try { history.replaceState(null, "", "#" + d); } catch (e) {}
+    renderAll();
+  }
+
+  fetch("data.json", { cache: "no-cache" }).then((r) => r.json()).then((data) => {
+    DATA = data;
+    DATES = Object.keys(data.days).sort();
+    for (const d of DATES) AGG[d] = dayAgg(d);
+    const sel = $("date");
+    for (const d of DATES) { const o = el("option", null, fmtDate(d, { weekday: "short", month: "short", day: "numeric", year: "numeric" })); o.value = d; sel.appendChild(o); }
+    sel.onchange = () => go(sel.value);
+    $("prev").onclick = () => go(DATES[DATES.indexOf(cur) - 1]);
+    $("next").onclick = () => go(DATES[DATES.indexOf(cur) + 1]);
+    for (const b of $("period").querySelectorAll("button")) b.onclick = () => { period = b.dataset.p; renderCats(); };
+    const ss = $("series");
+    for (const c of [{ key: "card", label: "Daily card total" }, ...CAT]) { const o = el("option", null, c.label); o.value = c.key; ss.appendChild(o); }
+    ss.onchange = () => { series = ss.value; renderChart(); };
+    const u = $("unit"); if (unitDollars > 0) u.value = unitDollars;
+    u.oninput = () => { unitDollars = parseFloat(u.value) || 0; try { localStorage.setItem("unit$", String(unitDollars)); } catch (e) {} renderAll(); };
+    if (data.mode === "replay") {
+      const bn = $("banner"); bn.hidden = false;
+      bn.textContent = `Offseason preview: this replays the ${data.season} season with the current model. It opens on an example day (${fmtDate(data.default_date, { month: "long", day: "numeric" })}); use the arrows or the date list to move through the season. Live daily picks start on Opening Day.`;
+      $("how-replay").textContent = `${data.season} numbers are a replay: the current model re-run on each ${data.season} day and graded against that day's prices and final scores. Game lines use closing prices; HR props use opening prices where captured.`;
+    } else {
+      $("how-replay").textContent = "Bets show as Pending until the games finish; results and profit update after settlement.";
+    }
+    $("foot").textContent = `Updated ${new Date(data.updated_at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}. For entertainment and tracking only; not betting advice.`;
+    const h = location.hash.slice(1);
+    go(data.days[h] ? h : data.default_date);
+    let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderChart, 120); });
+  }).catch((e) => {
+    document.querySelector(".wrap").appendChild(el("div", "banner", "Couldn't load the data (" + e.message + "). Try refreshing."));
+  });
+})();
+</script>
+</body>
+</html>
