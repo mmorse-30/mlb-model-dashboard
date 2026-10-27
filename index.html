@@ -55,6 +55,8 @@ h2 { font-size: 17px; margin: 0 0 4px; }
 .datebar select { min-width: 200px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tiles-h { grid-column: 1 / -1; font-size: 13px; font-weight: 650; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; margin: 6px 0 -4px; }
+.tiles-h .mk { text-transform: none; letter-spacing: 0; font-weight: 400; margin-left: 6px; }
 .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
 .tile .lbl { color: var(--ink-2); font-size: 13px; }
 .tile .big { font-size: 28px; font-weight: 650; margin: 2px 0; letter-spacing: -0.01em; }
@@ -89,6 +91,8 @@ table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--grid); white-space: nowrap; }
 th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
 td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+td.strong { font-weight: 650; }
+td.hrcol, th.hrcol { border-left: 1px solid var(--axis); }
 tr.total td { font-weight: 650; background: var(--surface-2); }
 tr.sect td { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; padding-top: 16px; border-bottom: 1px solid var(--grid); }
 tr.subtle td { color: var(--ink-2); }
@@ -107,8 +111,10 @@ details.how summary { cursor: pointer; font-weight: 600; color: var(--ink); }
 details.how li { margin: 4px 0; }
 .foot { color: var(--muted); font-size: 12px; margin-top: 20px; }
 @media (max-width: 720px) {
-  .tiles { grid-template-columns: 1fr; }
-  .tile .big { font-size: 24px; }
+  .tiles { gap: 8px; }
+  .tile { padding: 10px 10px; }
+  .tile .big { font-size: 18px; }
+  .tile .lbl, .tile .meta { font-size: 11.5px; }
   .datebar select { min-width: 0; flex: 1; }
   .datebar { width: 100%; }
   .games { grid-template-columns: 1fr; }
@@ -174,7 +180,7 @@ details.how li { margin: 4px 0; }
 
   <section class="card">
     <h2>By month</h2>
-    <p class="hint">Units won or lost per category each month, through the selected day.</p>
+    <p class="hint">Units won or lost each month, through the selected day. HR props are kept apart on the right.</p>
     <div class="scroll"><table id="months"></table></div>
   </section>
 
@@ -204,6 +210,7 @@ details.how li { margin: 4px 0; }
     { key: "team_tot", label: "Team totals" },
     { key: "hr", label: "HR props" },
   ];
+  const LINES = CAT.filter((c) => c.key !== "hr");
   const OTHER = [
     { key: "props", label: "Other player props" },
     { key: "alt_totals", label: "Alt game totals" },
@@ -214,7 +221,7 @@ details.how li { margin: 4px 0; }
     fanatics: "Fanatics", bovada: "Bovada", betonlineag: "BetOnline", mybookieag: "MyBookie", espnbet: "ESPN BET", hardrockbet: "Hard Rock",
     ballybet: "Bally Bet", betparx: "betPARX", lowvig: "LowVig", pointsbetus: "PointsBet", superbook: "SuperBook", wynnbet: "WynnBET", unibet_us: "Unibet" };
   const MKT_LABEL = { totals: "Total", ml: "Moneyline", runline: "Run line", team_tot: "Team total" };
-  let DATA, DATES, cur, period = "season", filter = "all", series = "card", hrAll = false;
+  let DATA, DATES, cur, period = "season", filter = "all", series = "lines", hrAll = false;
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
@@ -252,13 +259,13 @@ details.how li { margin: 4px 0; }
       const v = o[k] || {};
       out[k] = { n: v.staked || 0, w: v.w || 0, l: v.l || 0, p: v.p || 0, pnl: v.pnl || 0 };
     }
-    out.card = CAT.reduce((acc, c) => add(acc, out[c.key]), zero());
+    out.lines = LINES.reduce((acc, c) => add(acc, out[c.key]), zero());
     return out;
   }
   const AGG = {};
   function aggRange(from, to) {
     const out = {};
-    for (const k of [...CAT, ...OTHER].map((c) => c.key).concat("card")) out[k] = zero();
+    for (const k of [...CAT, ...OTHER].map((c) => c.key).concat("lines")) out[k] = zero();
     for (const d of DATES) {
       if (d < from || d > to) continue;
       const a = AGG[d];
@@ -280,9 +287,13 @@ details.how li { margin: 4px 0; }
   function renderTiles() {
     const T = $("tiles"); T.replaceChildren();
     const m0 = cur.slice(0, 8) + "01", s0 = DATES[0];
-    T.appendChild(tile(fmtDate(cur, { weekday: "long", month: "short", day: "numeric" }), AGG[cur].card));
-    T.appendChild(tile(fmtDate(cur, { month: "long" }) + " to date", aggRange(m0, cur).card));
-    T.appendChild(tile("Season to date", aggRange(s0, cur).card));
+    const mo = aggRange(m0, cur), se = aggRange(s0, cur);
+    for (const [k, title, note] of [["lines", "Game lines", "totals, moneyline, run line, team totals"], ["hr", "HR props", "tracked separately"]]) {
+      const h = el("div", "tiles-h", title); h.appendChild(el("span", "mk", note)); T.appendChild(h);
+      T.appendChild(tile(fmtDate(cur, { weekday: "short", month: "short", day: "numeric" }), AGG[cur][k]));
+      T.appendChild(tile(fmtDate(cur, { month: "long" }) + " to date", mo[k]));
+      T.appendChild(tile("Season to date", se[k]));
+    }
   }
 
   // ---------- render: the day's card
@@ -396,9 +407,13 @@ details.how li { margin: 4px 0; }
     for (const [h, n] of [["Category", 0], ["Bets", 1], ["W-L-P", 1], ["Win %", 1], ["Profit", 1], ["ROI", 1]]) hr.appendChild(el("th", n ? "n" : "", h));
     thead.appendChild(hr); t.appendChild(thead);
     const tb = el("tbody");
-    for (const c of CAT) tb.appendChild(catRow(c.label, a[c.key]));
-    tb.appendChild(catRow("Daily card total", a.card, "total"));
-    const s = el("tr", "sect"); const sc = el("td", null, "Tracked, not on the card"); sc.colSpan = 6; s.appendChild(sc); tb.appendChild(s);
+    const sect = (txt) => { const s = el("tr", "sect"); const sc = el("td", null, txt); sc.colSpan = 6; s.appendChild(sc); tb.appendChild(s); };
+    sect("Game lines");
+    for (const c of LINES) tb.appendChild(catRow(c.label, a[c.key]));
+    tb.appendChild(catRow("Game lines total", a.lines, "total"));
+    sect("HR props");
+    tb.appendChild(catRow("HR props", a.hr, "total"));
+    sect("Tracked, not on the card");
     for (const c of OTHER) tb.appendChild(catRow(c.label, a[c.key], "subtle"));
     t.appendChild(tb);
   }
@@ -476,10 +491,10 @@ details.how li { margin: 4px 0; }
   // ---------- render: month table
   function renderMonths() {
     const t = $("months"); t.replaceChildren();
-    const cols = [...CAT, { key: "card", label: "Card total" }];
+    const cols = [...LINES, { key: "lines", label: "Game lines" }, { key: "hr", label: "HR props" }];
     const thead = el("thead"), hr = el("tr");
     hr.appendChild(el("th", null, "Month"));
-    for (const c of cols) hr.appendChild(el("th", "n", c.label));
+    for (const c of cols) hr.appendChild(el("th", "n" + (c.key === "hr" ? " hrcol" : ""), c.label));
     thead.appendChild(hr); t.appendChild(thead);
     const tb = el("tbody");
     const months = [...new Set(DATES.filter((d) => d <= cur).map((d) => d.slice(0, 7)))];
@@ -489,7 +504,7 @@ details.how li { margin: 4px 0; }
       tr.appendChild(el("td", null, fmtDate(mo + "-15", { month: "long" }) + (cur.startsWith(mo) ? " (to date)" : "")));
       for (const c of cols) {
         const v = a[c.key];
-        const td = el("td", "n " + (c.key === "card" ? "" : "") + tone(v.pnl), v.n ? money(v.pnl) : "—");
+        const td = el("td", "n " + (c.key === "lines" ? "strong " : c.key === "hr" ? "hrcol " : "") + tone(v.pnl), v.n ? money(v.pnl) : "—");
         td.title = `${v.n} bets, ${v.w}-${v.l}${v.p ? "-" + v.p : ""}`;
         tr.appendChild(td);
       }
@@ -497,7 +512,7 @@ details.how li { margin: 4px 0; }
     }
     const tot = aggRange(DATES[0], cur), tr = el("tr", "total");
     tr.appendChild(el("td", null, "Season"));
-    for (const c of cols) tr.appendChild(el("td", "n " + tone(tot[c.key].pnl), money(tot[c.key].pnl)));
+    for (const c of cols) tr.appendChild(el("td", "n " + (c.key === "hr" ? "hrcol " : "") + tone(tot[c.key].pnl), money(tot[c.key].pnl)));
     tb.appendChild(tr);
     t.appendChild(tb);
   }
@@ -526,7 +541,7 @@ details.how li { margin: 4px 0; }
     $("next").onclick = () => go(DATES[DATES.indexOf(cur) + 1]);
     for (const b of $("period").querySelectorAll("button")) b.onclick = () => { period = b.dataset.p; renderCats(); };
     const ss = $("series");
-    for (const c of [{ key: "card", label: "Daily card total" }, ...CAT]) { const o = el("option", null, c.label); o.value = c.key; ss.appendChild(o); }
+    for (const c of [{ key: "lines", label: "Game lines (all)" }, ...LINES, { key: "hr", label: "HR props" }]) { const o = el("option", null, c.label); o.value = c.key; ss.appendChild(o); }
     ss.onchange = () => { series = ss.value; renderChart(); };
     const u = $("unit"); if (unitDollars > 0) u.value = unitDollars;
     u.oninput = () => { unitDollars = parseFloat(u.value) || 0; try { localStorage.setItem("unit$", String(unitDollars)); } catch (e) {} renderAll(); };
